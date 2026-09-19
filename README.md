@@ -4,6 +4,12 @@ Find the next useful check. See what changed after the fix.
 
 FlowProof is a temporary water-use investigation workspace. It accepts cumulative meter readings, keeps operating context explicit, and compares eligible observations after a reported repair. The core is deterministic and works without a model key.
 
+Live app: https://flowproof-mu.vercel.app/
+
+Demo: https://youtu.be/WrlLPeW0DG8
+
+Submission: https://devpost.com/software/flowproof-17abxn
+
 ## Run locally
 
 Requires Node.js 22.14+ and PostgreSQL 16+. The implementation was verified with PostgreSQL 16.14. Package versions are pinned in `package-lock.json`.
@@ -71,10 +77,10 @@ Session cookies are HttpOnly, SameSite=Lax, and Secure in production. Only token
 
 See `docs/VERIFICATION.md`, `docs/EVALUATION.md`, `docs/METHODS.md`, and `docs/BUILD_LOG.md`. The original recovered contract is in `docs/PRD.md`.
 
-The app is running locally. Public deployment, public-browser verification, scheduled retention cleanup, a facilities-user study, and the submission video are not complete. Standalone Playwright browser launch is blocked by this Codex macOS sandbox; in-app browser checks were performed separately. Do not describe the project as fully release-certified.
+The app is deployed on Vercel with an isolated Neon free-plan database. Production HTTP smoke checks passed, and the hosted sample was checked in the in-app browser. The narrated demo is uploaded and the NextStep Hacks entry was submitted September 19, 2026. Validation includes 25 unit tests, nine database integration tests, and 40 synthetic scenarios. A facilities-user study remains future work. Standalone Playwright browser launch was blocked by the local macOS sandbox; in-app browser checks were performed separately.
 
 ## Deployment
 
 Provide PostgreSQL, `DATABASE_URL`, `APP_ORIGIN`, and a strong stable `SESSION_SECRET`. Run migrations before starting the production build. Use an HTTPS origin; Secure cookies intentionally do not work over public HTTP. The normal production command is `next start` behind an HTTPS reverse proxy, with the appropriate host/port for the platform. No paid resources were provisioned.
 
-Schedule `npm run purge` to remove expired workspaces. Access expiry is enforced before deletion. Cleanup has not been scheduled by this local build. Keep the service available throughout judging before making any availability promise.
+Vercel runs `/api/cron/purge` daily at 03:00 UTC, authenticated with `CRON_SECRET`. Manual production verification returned 401 without authorization and 200 with authorization; the first scheduled execution has not yet been observed. `npm run purge` remains available for other hosts. Access expiry is enforced before deletion. On Vercel, the canonical origin is derived from `VERCEL_PROJECT_PRODUCTION_URL` unless `APP_ORIGIN` is explicitly set.

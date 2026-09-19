@@ -22,7 +22,7 @@ The application uses Next.js, React, TypeScript, PostgreSQL, Drizzle, and Zod. A
 
 Totals are converted to integer millilitres before subtraction. Database transactions serialize workspace changes, revisions catch stale edits, and idempotency keys make retries safe. Temporary sessions isolate investigations. Receipts preserve the evidence as it stood when they were created, while later changes mark them superseded.
 
-Cursor and Codex assisted development. The existing product requirements were carried forward into the implementation, verification, and submission preparation.
+Cursor and Codex assisted development. FlowProof did not exist before August 21, 2026. The requirements, implementation, verification, and demo were developed during the hackathon period. The demo uses Deepgram Aura-2 Thalia narration over real application captures.
 
 ## Challenges
 
@@ -38,8 +38,14 @@ The reset regression also showed why a successful sample journey is insufficient
 
 ## What works now
 
-The local application supports manual readings, CSV previews, contextual observations, reported repairs, gated comparisons, and HTML/JSON receipts. Verification includes 23 unit tests, nine database integration tests, and 40 synthetic evaluation cases. The synthetic suite checks defined scenarios; it is not a field accuracy benchmark.
+The live application supports manual readings, CSV previews, contextual observations, reported repairs, gated comparisons, and HTML/JSON receipts. Verification includes 25 unit tests, nine database integration tests, and 40 synthetic evaluation cases. The synthetic suite checks defined scenarios; it is not a field accuracy benchmark.
 
 ## What's next
 
 Test the workflow with a caretaker using non-confidential readings. Measure whether the suggested checks help them resolve uncertainty, reduce unnecessary inspections, and collect useful follow-up evidence. Any future water-saving claim should come from a documented field evaluation.
+
+## Try FlowProof
+
+- Live app: https://flowproof-mu.vercel.app/
+- Source: https://github.com/himanshu748/flowproof
+- Demo: https://youtu.be/WrlLPeW0DG8
