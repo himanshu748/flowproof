@@ -160,14 +160,31 @@ function refreshWindows(state: WorkspaceState, meterId: string) {
             !state.readings.some((x) => x.supersedesId === r.id),
         )
         .sort((a, b) => Date.parse(a.timestamp) - Date.parse(b.timestamp));
+      const resetInside = state.meters
+        .find((m) => m.id === meterId)
+        ?.resetEvents?.some(
+          (event) =>
+            Date.parse(event.at) >= Date.parse(w.start!.timestamp) &&
+            Date.parse(event.at) <= Date.parse(w.end!.timestamp),
+        );
+      // Preserve legacy reset warnings whose original timestamp was not stored.
+      const retained = w.dataWarnings.filter(
+        (warning) =>
+          warning !== "Internal reset or decreasing reading in this window",
+      );
+      if (
+        resetInside &&
+        !retained.includes("Acknowledged reset inside observation")
+      )
+        retained.push("Acknowledged reset inside observation");
       w.dataWarnings = readings.some(
         (r, i) =>
           i > 0 &&
           (r.epochId !== readings[i - 1].epochId ||
             BigInt(r.totalMl!) < BigInt(readings[i - 1].totalMl!)),
       )
-        ? ["Internal reset or decreasing reading in this window"]
-        : [];
+        ? [...retained, "Internal reset or decreasing reading in this window"]
+        : retained;
     }
     invalidate(c);
   }
@@ -295,21 +312,15 @@ export function operation(
       ])
       .parse(body);
     if (b.type === "health") {
-      if (b.to < b.from)
+      if (Date.parse(b.to) < Date.parse(b.from))
         throw new ApiError(422, "Health coverage ends before it starts.");
       const h = { id: randomUUID(), ...b };
       m.healthEvidence.push(h);
     } else {
       m.epochId = randomUUID();
-      for (const c of state.cases.filter((c) => c.meterId === m.id))
-        for (const w of c.observations)
-          if (
-            w.start &&
-            w.end &&
-            w.start.timestamp <= b.at &&
-            w.end.timestamp >= b.at
-          )
-            w.dataWarnings.push("Acknowledged reset inside observation");
+      m.resetEvents ??= [];
+      m.resetEvents.push({ id: randomUUID(), at: b.at, recordedAt: now });
+      refreshWindows(state, m.id);
     }
     state.cases.filter((c) => c.meterId === m.id).forEach(invalidate);
     return m;

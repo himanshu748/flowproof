@@ -126,6 +126,7 @@ export type Meter = {
   epochId: string;
   unit: "L" | "m3";
   healthEvidence: HealthEvidence[];
+  resetEvents?: { id: string; at: string; recordedAt: string }[];
 };
 export type ImportPreview = {
   id: string;

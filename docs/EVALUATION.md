@@ -1,6 +1,6 @@
 # Synthetic policy evaluation
 
-Run: 2026-09-19T09:45:02.007Z
+Run: 2026-09-19T10:07:05.434Z
 
 40/40 outcome and next-action assertions passed. Unsupported positive comparisons: 0. Invalid selected windows: 0. Deterministic replays: 40/40.
 

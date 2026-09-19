@@ -1,6 +1,15 @@
 import { beforeAll, afterAll, describe, it, expect } from "vitest";
 import postgres from "postgres";
 import { randomUUID } from "node:crypto";
+import type {
+  Meter,
+  CaseSnapshot,
+  ImportPreview,
+  StoredReport,
+  WorkspaceState,
+} from "../../src/domain/types";
+import { referenceRepairCase } from "../../src/demo/scenarios";
+import { compareRepair } from "../../src/domain/compare-repair";
 const name = "flowproof_test_" + Date.now();
 const admin = postgres("postgres://localhost:5432/postgres", { max: 1 });
 let service: typeof import("../../src/server/service");
@@ -163,4 +172,121 @@ describe("PostgreSQL transactions and workspace authorization", () => {
       service.createWorkspace("uploaded", key),
     ).rejects.toMatchObject({ status: 409 });
   });
+});
+
+it("persists uploaded CSV through repair, receipt, reset, and subsequent import", async () => {
+  const workspace = await service.createWorkspace("uploaded");
+  async function write(path: string[], body: unknown, revision?: number) {
+    return service.mutate(
+      workspace.id,
+      randomUUID(),
+      service.hash(JSON.stringify({ path, body })),
+      (state) =>
+        service.operation(
+          state,
+          path,
+          body,
+          revision === undefined ? null : String(revision),
+        ),
+    );
+  }
+  async function read(): Promise<WorkspaceState> {
+    return (await service.session(workspace.token)).state;
+  }
+  const meter = (await write(["meters"], {
+    name: "Integration test meter",
+    timezone: "Asia/Kolkata",
+    resolution: "1",
+    unit: "L",
+  })) as Meter;
+  const sample = referenceRepairCase();
+  const csv =
+    "meter_id,timestamp,total,unit,quality\n" +
+    sample.observations
+      .flatMap((w) => [w.start!, w.end!])
+      .map((r) =>
+        [meter.id, r.timestamp, r.sourceTotal, "L", "valid"].join(","),
+      )
+      .join("\n");
+  const preview = (await write(["imports", "preview"], {
+    csv,
+  })) as ImportPreview;
+  expect(preview.errors).toEqual([]);
+  await write(["imports", "commit"], {
+    previewId: preview.id,
+    acknowledgeExclusions: false,
+  });
+  await write(["meters", meter.id, "events"], {
+    type: "health",
+    from: "2026-09-01T00:00:00+05:30",
+    to: "2026-09-30T23:59:59+05:30",
+    basis: "Synthetic integration fixture",
+    reportedBy: "Test technician",
+  });
+  const c = (await write(["cases"], {
+    meterId: meter.id,
+    name: "Imported test investigation",
+  })) as CaseSnapshot;
+  for (const w of sample.observations) {
+    const state = await read();
+    const current = state.cases[0];
+    const start = state.readings.find(
+      (r) => Date.parse(r.timestamp) === Date.parse(w.start!.timestamp),
+    )!;
+    const end = state.readings.find(
+      (r) => Date.parse(r.timestamp) === Date.parse(w.end!.timestamp),
+    )!;
+    await write(
+      ["cases", c.id, "observations"],
+      {
+        startId: start.id,
+        endId: end.id,
+        phase: w.phase,
+        context: {
+          ...w.context,
+          healthEvidenceId: state.meters[0].healthEvidence[0].id,
+        },
+      },
+      current.revision,
+    );
+  }
+  let state = await read();
+  await write(
+    ["cases", c.id, "events"],
+    {
+      type: "repair",
+      actualRepairAt: sample.repairAt,
+      reportedBy: "Test technician",
+      workDescription: "Synthetic fixture repair",
+    },
+    state.cases[0].revision,
+  );
+  state = await read();
+  expect(compareRepair(state.cases[0]).outcome).toBe("observed_reduction");
+  expect(compareRepair(state.cases[0]).rateChangeLpm).toBe(1.7);
+  const report = (await write(
+    ["cases", c.id, "reports"],
+    {},
+    state.cases[0].revision,
+  )) as StoredReport;
+  expect(report.snapshot.sourceMode).toBe("uploaded");
+  await write(["meters", meter.id, "events"], {
+    type: "reset",
+    at: "2026-09-16T03:00:00+05:30",
+    acknowledged: true,
+  });
+  const next = (await write(["imports", "preview"], {
+    csv:
+      "meter_id,timestamp,total,unit,quality\n" +
+      meter.id +
+      ",2026-09-19T02:00:00+05:30,110000,L,valid",
+  })) as ImportPreview;
+  await write(["imports", "commit"], {
+    previewId: next.id,
+    acknowledgeExclusions: false,
+  });
+  state = await read();
+  expect(compareRepair(state.cases[0]).outcome).toBe("insufficient_evidence");
+  expect(state.reports[0]).toEqual(report);
+  expect(state.reports[0].revision).toBeLessThan(state.cases[0].revision);
 });
