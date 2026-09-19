@@ -46,3 +46,7 @@ Screenshots were inspected through the in-app browser during these checks. They 
 - Storage uses transactional workspace snapshots and separate immutable bigint readings rather than every proposed normalized PRD table. Pagination and a full multi-user workflow are not implemented.
 
 These limitations prevent claiming the full PRD's B7/public-release gate as passed.
+
+## September 19 rubric follow-up
+
+Fixed loss of reset evidence during reading refresh. Current checks: 23 unit tests, nine PostgreSQL integration tests, TypeScript, ESLint, production build, HTTP smoke, and 40/40 synthetic evaluation cases pass. Added full uploaded CSV → contextual observations → repair → immutable receipt → reset → subsequent import coverage. In-app browser replay confirmed context, inspection, repair, comparison, receipt, and insufficient-evidence stages; a 390px viewport showed no horizontal overflow. Public deployment remains blocked pending publication approval.
