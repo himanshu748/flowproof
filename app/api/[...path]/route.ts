@@ -21,7 +21,11 @@ async function handle(
     const { path } = await params;
     const unsafe = req.method !== "GET";
     if (unsafe) {
-      const expected = process.env.APP_ORIGIN || "http://127.0.0.1:3000";
+      const expected =
+        process.env.APP_ORIGIN ||
+        (process.env.VERCEL_PROJECT_PRODUCTION_URL
+          ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+          : "http://127.0.0.1:3010");
       if (req.headers.get("origin") !== expected)
         throw new ApiError(403, "Cross-origin request rejected.");
       if (Number(req.headers.get("content-length") || 0) > 2200000)
